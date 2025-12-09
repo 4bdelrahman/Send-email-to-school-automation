@@ -1,0 +1,59 @@
+name: Gmail Auto-Sender Monitor
+
+on:
+  # Run every 10 minutes, any time, any day
+  schedule:
+    - cron: '*/10 * * * *'  # Every 10 minutes, 24/7
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  monitor-and-send:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client python-dotenv
+      
+      - name: Create OAuth credentials file
+        env:
+          GMAIL_CREDENTIALS: ${{ secrets.GMAIL_CREDENTIALS }}
+        run: |
+          echo "$GMAIL_CREDENTIALS" > OAuth.json
+      
+      - name: Create token file
+        env:
+          GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+        run: |
+          echo "$GMAIL_TOKEN" > token.json
+      
+      - name: Create .env file
+        env:
+          MONITORING_EMAIL: ${{ secrets.MONITORING_EMAIL }}
+          TARGET_EMAIL: ${{ secrets.TARGET_EMAIL }}
+        run: |
+          echo "MONITORING_EMAIL=$MONITORING_EMAIL" >> .env
+          echo "TARGET_EMAIL=$TARGET_EMAIL" >> .env
+      
+      - name: Run Gmail Auto-Sender
+        run: |
+          python execution/gmail_auto_sender.py
+      
+      - name: Upload logs (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: email-logs
+          path: .tmp/email_log.txt
+          if-no-files-found: ignore
