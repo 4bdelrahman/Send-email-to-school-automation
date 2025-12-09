@@ -1,11 +1,12 @@
 """
 Gmail Auto-Sender Script
 Monitors Gmail inbox for !send command and sends pre-formatted email to DP@eis-zayed.com
+FIXED: Only processes ONE email at a time, only recent emails (last 24 hours)
 """
 
 import os
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -21,7 +22,7 @@ load_dotenv()
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 # Configuration
-MONITORING_EMAIL = os.getenv('MONITORING_EMAIL')
+MONITORING_EMAIL = os.getenv('MONITORING_EMAIL', 'ammell.ommarr37@gmail.com')
 TARGET_EMAIL = os.getenv('TARGET_EMAIL', 'DP@eis-zayed.com')
 LOG_FILE = '.tmp/email_log.txt'
 
@@ -98,25 +99,69 @@ def send_dismissal_email(service, date_str=None):
         return False
 
 
+def get_email_body(service, message_id):
+    """Extract the body text from an email"""
+    try:
+        message = service.users().messages().get(userId='me', id=message_id, format='full').execute()
+        
+        # Try to get body from payload
+        payload = message.get('payload', {})
+        
+        # Check for simple body
+        if 'body' in payload and payload['body'].get('data'):
+            body_data = payload['body']['data']
+            return base64.urlsafe_b64decode(body_data).decode('utf-8')
+        
+        # Check for multipart message
+        parts = payload.get('parts', [])
+        for part in parts:
+            if part.get('mimeType') == 'text/plain':
+                if 'body' in part and part['body'].get('data'):
+                    body_data = part['body']['data']
+                    return base64.urlsafe_b64decode(body_data).decode('utf-8')
+        
+        # Fallback: return snippet
+        return message.get('snippet', '')
+    
+    except Exception as e:
+        print(f"Error getting email body: {e}")
+        return ''
+
+
 def check_for_send_command(service):
-    """Check inbox for unread emails with !send command"""
+    """Check inbox for unread emails with !send command from last 24 hours"""
     
     try:
-        # Search for unread messages containing !send
-        query = 'is:unread (!send OR "!send")'
-        results = service.users().messages().list(userId='me', q=query).execute()
+        # Only check emails from the last 24 hours
+        yesterday = (datetime.now() - timedelta(hours=24)).strftime('%Y/%m/%d')
+        
+        # Search for unread messages from last 24 hours
+        query = f'is:unread after:{yesterday}'
+        results = service.users().messages().list(userId='me', q=query, maxResults=10).execute()
         messages = results.get('messages', [])
         
         if not messages:
-            print(f"[{datetime.now()}] No !send commands found.")
-            return []
+            print(f"[{datetime.now()}] No unread emails from last 24 hours.")
+            return None
         
-        print(f"[{datetime.now()}] Found {len(messages)} message(s) with !send command.")
-        return messages
+        print(f"[{datetime.now()}] Found {len(messages)} recent unread email(s). Checking for !send command...")
+        
+        # Check each message for !send in the body
+        for msg in messages:
+            message_id = msg['id']
+            body = get_email_body(service, message_id)
+            
+            # Check if !send is in the body (case insensitive)
+            if '!send' in body.lower():
+                print(f"[{datetime.now()}] Found !send command in message {message_id}")
+                return msg  # Return ONLY the first matching message
+        
+        print(f"[{datetime.now()}] No emails with !send command found.")
+        return None
     
     except HttpError as error:
         print(f"[{datetime.now()}] Error checking messages: {error}")
-        return []
+        return None
 
 
 def mark_as_read(service, message_id):
@@ -132,49 +177,36 @@ def mark_as_read(service, message_id):
         print(f"[{datetime.now()}] Error marking message as read: {error}")
 
 
-def process_messages(service, messages):
-    """Process all messages with !send command"""
-    
-    for msg in messages:
-        message_id = msg['id']
-        
-        # Get message details
-        try:
-            message = service.users().messages().get(userId='me', id=message_id).execute()
-            
-            # Extract date if present in the message (optional enhancement)
-            # For now, use current date
-            
-            # Send the dismissal email
-            success = send_dismissal_email(service)
-            
-            if success:
-                # Mark the trigger email as read
-                mark_as_read(service, message_id)
-                
-                # Optional: Add a label
-                # apply_label(service, message_id, 'Processed')
-        
-        except HttpError as error:
-            print(f"[{datetime.now()}] Error processing message {message_id}: {error}")
-
-
 def main():
     """Main execution function"""
     print(f"[{datetime.now()}] Starting Gmail Auto-Sender...")
+    print(f"[{datetime.now()}] Monitoring: {MONITORING_EMAIL}")
+    print(f"[{datetime.now()}] Target: {TARGET_EMAIL}")
+    print()
     
     # Get Gmail service
     service = get_gmail_service()
     
-    # Check for !send commands
-    messages = check_for_send_command(service)
+    # Check for !send command (returns only ONE message)
+    message = check_for_send_command(service)
     
-    # Process messages
-    if messages:
-        process_messages(service, messages)
-        print(f"[{datetime.now()}] Processing complete. {len(messages)} email(s) processed.")
+    # Process the message if found
+    if message:
+        message_id = message['id']
+        
+        print(f"[{datetime.now()}] Processing message {message_id}...")
+        
+        # Send the dismissal email (ONE email only)
+        success = send_dismissal_email(service)
+        
+        if success:
+            # Mark the trigger email as read
+            mark_as_read(service, message_id)
+            print(f"[{datetime.now()}] SUCCESS: Sent 1 dismissal email to {TARGET_EMAIL}")
+        else:
+            print(f"[{datetime.now()}] FAILED: Could not send email")
     else:
-        print(f"[{datetime.now()}] No messages to process.")
+        print(f"[{datetime.now()}] No !send command found. Nothing to process.")
 
 
 if __name__ == '__main__':

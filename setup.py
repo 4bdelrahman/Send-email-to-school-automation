@@ -19,7 +19,7 @@ def setup_gmail_auth():
     
     # Check if OAuth.json exists
     if not os.path.exists('OAuth.json'):
-        print("❌ ERROR: OAuth.json not found!")
+        print("[ERROR] OAuth.json not found!")
         print()
         print("Please follow these steps:")
         print("1. Go to https://console.cloud.google.com/")
@@ -29,12 +29,12 @@ def setup_gmail_auth():
         print()
         return False
     
-    print("✓ Found credentials.json")
+    print("[OK] Found OAuth.json")
     print()
     
     # Check if token already exists
     if os.path.exists('token.json'):
-        print("⚠️  token.json already exists!")
+        print("[WARNING] token.json already exists!")
         response = input("Do you want to re-authenticate? (y/n): ")
         if response.lower() != 'y':
             print("Setup cancelled.")
@@ -44,7 +44,7 @@ def setup_gmail_auth():
     # Run OAuth flow
     print("Starting OAuth authentication...")
     print("A browser window will open. Please:")
-    print("1. Select your Google account")
+    print("1. Select your Google account (ammell.ommarr37@gmail.com)")
     print("2. Grant permissions to access Gmail")
     print("3. Close the browser when done")
     print()
@@ -59,7 +59,7 @@ def setup_gmail_auth():
         
         print()
         print("=" * 60)
-        print("✅ SUCCESS! Authentication complete!")
+        print("[SUCCESS] Authentication complete!")
         print("=" * 60)
         print()
         print("token.json has been created.")
@@ -69,16 +69,16 @@ def setup_gmail_auth():
         print("2. Add GitHub Secrets:")
         print("   - GMAIL_CREDENTIALS (content of OAuth.json)")
         print("   - GMAIL_TOKEN (content of token.json)")
-        print("   - MONITORING_EMAIL (your email)")
+        print("   - MONITORING_EMAIL (ammell.ommarr37@gmail.com)")
         print("   - TARGET_EMAIL (DP@eis-zayed.com)")
-        print("3. Push to GitHub and enable Actions")
+        print("3. Enable GitHub Actions")
         print()
         
         return True
     
     except Exception as e:
         print()
-        print(f"❌ ERROR: Authentication failed!")
+        print("[ERROR] Authentication failed!")
         print(f"Error: {e}")
         print()
         return False
