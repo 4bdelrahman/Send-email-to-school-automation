@@ -1,13 +1,11 @@
 name: Gmail Auto-Sender Monitor
-
 on:
-  # Run every 10 minutes, any time, any day
+  # Run every 20 minutes from 7 AM to 4 PM Egypt time (5 AM to 2 PM GMT), Sunday to Thursday
   schedule:
-    - cron: '*/10 * * * *'  # Every 10 minutes, 24/7
+    - cron: '*/20 5-13 * * 0-4'  # Every 20 minutes, 5 AM-2 PM GMT (7 AM-4 PM Egypt), Sun-Thu
   
   # Allow manual trigger
   workflow_dispatch:
-
 jobs:
   monitor-and-send:
     runs-on: ubuntu-latest
