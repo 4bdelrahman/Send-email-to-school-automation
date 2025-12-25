@@ -51,7 +51,9 @@ def setup_gmail_auth():
     
     try:
         flow = InstalledAppFlow.from_client_secrets_file('OAuth.json', SCOPES)
-        creds = flow.run_local_server(port=0)
+        # prompt='consent' ensures a refresh_token is returned every time
+        # access_type='offline' is required for refresh_tokens
+        creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
         
         # Save credentials
         with open('token.json', 'w') as token:

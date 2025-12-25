@@ -37,15 +37,20 @@ def get_gmail_service():
     
     # If no valid credentials, let user log in
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('OAuth.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        
-        # Save credentials for next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+        try:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file('OAuth.json', SCOPES)
+                creds = flow.run_local_server(port=0, access_type='offline', prompt='consent')
+            
+            # Save credentials for next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+        except Exception as e:
+            print(f"[{datetime.now()}] ERROR: Authentication failed: {e}")
+            print(f"[{datetime.now()}] TIP: Please run 'python setup.py' locally to refresh your token.")
+            raise e
     
     return build('gmail', 'v1', credentials=creds)
 

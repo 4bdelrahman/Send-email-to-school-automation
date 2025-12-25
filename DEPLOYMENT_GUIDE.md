@@ -7,6 +7,7 @@ This guide will help you deploy the Gmail Auto-Sender to your GitHub repository 
 Before deploying, make sure you have:
 
 - [ ] OAuth.json file (downloaded from Google Cloud Console)
+- [ ] Google Cloud Project Publishing Status set to **"In Production"**
 - [ ] Completed initial setup locally (`python setup.py`)
 - [ ] token.json file (generated after authentication)
 - [ ] Tested locally and verified it works (`python execution/gmail_auto_sender.py`)
@@ -60,6 +61,7 @@ Add these 4 secrets:
 #### Secret 2: GMAIL_TOKEN
 - **Name**: `GMAIL_TOKEN`
 - **Value**: Open `token.json` in a text editor, copy **ENTIRE content**, paste as value
+- **IMPORTANT**: Make sure you have switched your Google Cloud project to **"In Production"** before generating this token to ensure it doesn't expire.
 
 #### Secret 3: MONITORING_EMAIL
 - **Name**: `MONITORING_EMAIL`
